@@ -8,42 +8,37 @@
 class sphere : public hittable {
 public:
     sphere() {}
-     sphere(vec3 cen, double r, shared_ptr<material> m)
-         : center(cen), radius(r), mat_ptr(m) {};
+     sphere(vec3 cen, double r )
+         : center(cen), radius(r) {};
 
     virtual bool hit(const ray& r, double tmin, double tmax, hit_record& rec) const;
 
 public:
     vec3 center;
     double radius;
-    shared_ptr<material> mat_ptr;
 };
-
-bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
-    vec3 oc = r.origin() - center;
+bool sphere::hit(const ray& r, double tmin, double tmax, hit_record& rec) const {
+    vec3 co = r.origin() - center;
     auto a = r.direction().length_squared();
-    auto half_b = dot(oc, r.direction());
-    auto c = oc.length_squared() - radius * radius;
+    auto half_b = dot(r.direction(), co);
+    auto c = co.length_squared() - radius * radius;
     auto discriminant = half_b * half_b - a * c;
-
     if (discriminant > 0) {
         auto root = sqrt(discriminant);
         auto temp = (-half_b - root) / a;
-        if (temp < t_max && temp > t_min) {
+        if (temp <= tmax && temp >= tmin) {
             rec.t = temp;
-            rec.p = r.at(rec.t);
-            vec3 outward_normal = (rec.p - center) / radius;
+            rec.hittedPoint = r.at(temp);
+            vec3 outward_normal = (rec.hittedPoint - center) / radius;
             rec.set_face_normal(r, outward_normal);
-            rec.mat_ptr = mat_ptr;
             return true;
         }
         temp = (-half_b + root) / a;
-        if (temp < t_max && temp > t_min) {
+        if (temp <= tmax && temp >= tmin) {
             rec.t = temp;
-            rec.p = r.at(rec.t);
-            vec3 outward_normal = (rec.p - center) / radius;
+            rec.hittedPoint = r.at(rec.t);
+            vec3 outward_normal = (rec.hittedPoint - center) / radius;
             rec.set_face_normal(r, outward_normal);
-            rec.mat_ptr = mat_ptr;
             return true;
         }
     }
