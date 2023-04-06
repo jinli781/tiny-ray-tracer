@@ -14,10 +14,10 @@ public:
 	double operator[](int i) const { return e[i]; }
 	double& operator[](int i) { return e[i]; }
 
-	vec3& operator+=(vec3& v) {
+	vec3& operator+=(const vec3& v) {
 		e[0] += v.x();
-		e[0] += v.y();
-		e[0] += v.z();
+		e[1] += v.y();
+		e[2] += v.z();
 		return *this;
 	}
 	vec3& operator*=(const double t) {
@@ -39,11 +39,15 @@ public:
 	double length() const {
 		return sqrt(length_squared());
 	}
-	void write_color(std::ostream& out) {
+	void write_color(std::ostream& out, int samples_per_pixel) {
+		double scale = 1.0 / samples_per_pixel;
+		double r = sqrt(scale * x());
+		double g = sqrt(scale * y());
+		double b = sqrt(scale * z());
 		// Write the translated [0,255] value of each color component.
-		out << static_cast<int>(255.999 * x()) << ' '
-			<< static_cast<int>(255.999 * y()) << ' '
-			<< static_cast<int>(255.999 * z()) << '\n';
+		out << static_cast<int>(256 * clamp(r, 0.0, 0.999)) << ' '
+			<< static_cast<int>(256 * clamp(g, 0.0, 0.999)) << ' '
+			<< static_cast<int>(256 * clamp(b, 0.0, 0.999)) << '\n';
 	}
 
 
@@ -57,7 +61,6 @@ inline std::ostream& operator<<(std::ostream& out, const vec3& v) {
 inline vec3 operator+(const vec3& u, const vec3& v) {
 	return vec3(u.x() + v.x(), u.y() + v.y(), u.z() + v.z());
 }
-
 inline vec3 operator-(const vec3& u, const vec3& v) {
 	return vec3(u.x() - v.x(), u.y() - v.y(), u.z() - v.z());
 }
@@ -92,4 +95,27 @@ inline vec3 cross(const vec3& u, const vec3& v) {
 
 inline vec3 unit_vector(vec3 v) {
 	return v / v.length();
+}
+inline static vec3 random() {
+	return vec3(random_double(), random_double(), random_double());
+}
+
+inline static vec3 random(double min, double max) {
+	return vec3(random_double(min, max), random_double(min, max), random_double(min, max));
+}
+vec3 random_in_unit_sphere() {
+	while (true) {
+		auto p = random(-1, 1);
+		if (p.length_squared() >= 1) continue;
+		return p;
+	}
+}
+vec3 random_unit_vector() {
+	auto a = random_double(0, 2 * pi);
+	auto z = random_double(-1, 1);
+	auto r = sqrt(1 - z * z);
+	return vec3(r * cos(a), r * sin(a), z);
+}
+vec3 reflect(const vec3& v, const vec3& n) {
+	return v - 2 * dot(v, n) * n;
 }
