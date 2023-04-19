@@ -56,17 +56,17 @@ public:
 };
 class lambertian :public material {
 public:
-    lambertian(const vec3& a) : albedo(a) {}
+    lambertian( texture* a) : albedo(a) {}
     virtual bool scatter(
         const ray& r_in,  hit_record& rec, vec3& attenuation, ray& scattered
     ) const {
         vec3 scatter_direction = rec.normal + random_unit_vector();
         scattered = ray(rec.hittedPoint, scatter_direction,r_in.time());
-        attenuation = albedo;
+        attenuation = albedo->value(0,0,rec.hittedPoint);
         return true;
     }
 public:
-    vec3 albedo;
+    texture* albedo;
 };
 class metal :public material {
 public:
