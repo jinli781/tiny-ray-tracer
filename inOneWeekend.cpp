@@ -127,24 +127,30 @@ vec3 ray_color(const ray& r,const hittable& world,int depth) {
     return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
 }
 */
+/*
 vec3 ray_color(const ray& r, const vec3& background, const hittable& world, int depth) {
-    hit_record rec;
+    hit_record hrec;
 
     // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0)
         return vec3(0, 0, 0);
 
     // If the ray hits nothing, return the background color.
-    if (!world.hit(r, 0.001, infinity, rec))
+    if (!world.hit(r, 0.001, infinity, hrec))
         return background;
 
     ray scattered;
     vec3 attenuation;
-    vec3 emitted = rec.mat_ptr->emitted(r,rec,rec.u, rec.v, rec.hittedPoint);
+    vec3 emitted = hrec.mat_ptr->emitted(r,hrec,hrec.u, hrec.v, hrec.hittedPoint);
     float pdf_val;
     vec3 albedo;
-    if (rec.mat_ptr->scatter(r, rec, albedo, scattered, pdf_val)) {
+    if (hrec.mat_ptr->scatter(r, hrec, albedo, scattered, pdf_val)) {
         hittable* light_shape = new xz_rect(213, 343, 227, 332, 554, 0);
+        hittable* glass_sphere = new sphere(vec3(190,90,190),90,0);
+        hittable* a[2];
+        a[0] = light_shape;
+        a[1] = glass_sphere;
+        hittable_list hlist(a, 2);
         hittable_pdf p0(light_shape, rec.hittedPoint);
         cosine_pdf p1(rec.normal);
         mixture_pdf p(&p0, &p1);
@@ -154,6 +160,38 @@ vec3 ray_color(const ray& r, const vec3& background, const hittable& world, int 
     }
     else
         return emitted;
+    //return emitted + attenuation * ray_color(scattered, background, world, depth - 1);
+}
+*/
+vec3 ray_color(const ray& r, const hittable& world,hittable*light_shape,int depth) {
+    hit_record hrec;
+
+    // If we've exceeded the ray bounce limit, no more light is gathered.
+    if (depth <= 0)
+        return vec3(0, 0, 0);
+
+    // If the ray hits nothing, return the background color.
+    if (world.hit(r, 0.001, infinity, hrec)) {
+        scatter_record srec;
+        vec3 emitted = hrec.mat_ptr->emitted(r, hrec, hrec.u, hrec.v, hrec.hittedPoint);
+        float pdf_val;
+        vec3 albedo;
+        if (hrec.mat_ptr->scatter(r, hrec, srec)) {
+            if (srec.is_specular) {
+                return srec.attenuation * ray_color(srec.specular_ray, world, light_shape, depth - 1);
+            }
+            else {
+             
+                hittable_pdf p0(light_shape, hrec.hittedPoint);
+                mixture_pdf p(&p0, srec.pdf_ptr);
+                ray scattered = ray(hrec.hittedPoint, p.generate(), r.time());
+                pdf_val = p.value(scattered.direction());
+                return emitted + albedo * hrec.mat_ptr->scattering_pdf(r, hrec, scattered) * ray_color(scattered, world, light_shape, depth - 1) / pdf_val;
+            }
+        }
+        else
+            return emitted;
+    }
     //return emitted + attenuation * ray_color(scattered, background, world, depth - 1);
 }
 int main() {
@@ -172,6 +210,10 @@ int main() {
     auto vfov = 40.0;
 
     camera cam(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+     hittable* light_shape = new xz_rect (213, 343, 227, 332, 554, 0);
+     hittable* glass_sphere = new sphere (vec3(190, 90, 190), 90, 0);
+     hittable_list* hlist = new hittable_list();
+     hlist->add(light_shape);
     std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
     for (int j = image_height - 1; j >= 0; j--) {
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
@@ -181,7 +223,7 @@ int main() {
                     auto x = (i+random_double()) / image_width;
                     auto y = (j+random_double()) / image_height;
                     ray r = cam.get_ray(x, y);
-                    color += ray_color(r, background,world,10);
+                    color += ray_color(r,world,hlist,10);
                 }
             color.write_color(std::cout,samples_per_pixel);
         }

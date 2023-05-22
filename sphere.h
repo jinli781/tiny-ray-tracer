@@ -1,7 +1,7 @@
 //sphere.h
 #ifndef SPHERE_H
 #define SPHERE_H
-
+ 
 #include "hittable.h"
 #include "vec3.h"
 void get_sphere_uv(const vec3& p, double& u, double& v) {
@@ -18,11 +18,32 @@ public:
 
     virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const;
     virtual bool bounding_box(double t0, double t1, aabb& output_box) const;
+    virtual float pdf_value(const vec3& o, const vec3& v) const;
+    virtual vec3 random(const vec3& o) const;
 public:
     vec3 center;
     double radius;
     shared_ptr<material> mat_ptr;
 };
+    float sphere::pdf_value(const vec3& o, const vec3& v)const {
+        hit_record rec;
+        if (this->hit(ray(o, v), 0.001, infinity, rec)) {
+        float cos_theta_max = sqrt(1 - radius*radius/(center - o).length_squared());
+        float solid_angle = 2 * pi * (1 - cos_theta_max);
+        return 1 / solid_angle;
+        }
+        else
+        {
+            return 0;
+        }
+}
+    vec3 sphere::random(const vec3& o) const {
+        vec3 direction = center - o;
+        float distance_squared = direction.length_squared();
+        onb uvw;
+        uvw.build_from_w(direction);
+        return uvw.local(random_to_sphere(radius,distance_squared));
+    }
 bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
     vec3 co = r.origin() - center;
     auto a = r.direction().length_squared();

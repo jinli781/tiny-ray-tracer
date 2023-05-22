@@ -22,6 +22,8 @@ public:
     
    virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const ;
    virtual bool bounding_box(double t0, double t1, aabb& output_box) const;
+   virtual float pdf_value(const vec3& o, const vec3& v) const;
+   virtual vec3 random(const vec3& o) const;
 public:
     std::vector<shared_ptr<hittable>> objects;
 };
@@ -38,6 +40,17 @@ bool hittable_list::hit(const ray& r, double t_min, double t_max, hit_record& re
     
     }
     return hit_anything;
+}
+float hittable_list::pdf_value(const vec3& o, const vec3& v) const {
+    float weight = 1.0 / objects.size();
+    float sum = 0;
+    for (int i = 0; i < objects.size(); i++)
+        sum += weight * objects[i]->pdf_value(o,v);
+    return sum;
+}
+vec3 hittable_list::random(const vec3& o) const {
+    int index = int(random_double() * objects.size());
+    return objects[index]->random(o);
 }
 aabb surrounding_box(aabb box0, aabb box1) {
     vec3 small(ffmin(box0.min().x(), box1.min().x()),
